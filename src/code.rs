@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::parser::{AsmLine, CommandType};
+use crate::parser::{AsmLine};
 
 
 #[derive(Debug)]
@@ -63,8 +63,8 @@ impl SymbolTable {
     }
 
     pub fn set_rom(&mut self, line: &AsmLine) {
-        match line.command_t {
-            CommandType::LCommand => self.insert_rom(line.symbol().unwrap()),
+        match line {
+            AsmLine::LCommand(_) => self.insert_rom(line.symbol().unwrap()),
             _ => self.rom_address += 1
         }
     }
@@ -109,10 +109,10 @@ impl CodeGenerator {
         }
     }
     fn translate (&self, line: &AsmLine) -> String {
-        match line.command_t {
-            CommandType::CCommand => self.translate_c_command(line),
-            CommandType::ACommand => self.translate_a_command(line),
-            CommandType::LCommand => self.translate_l_command(),
+        match line {
+            AsmLine::CCommand(_,_,_) => self.translate_c_command(line),
+            AsmLine::ACommand(_) => self.translate_a_command(line),
+            AsmLine::LCommand(_) => self.translate_l_command(),
         }
     }
     fn translate_c_command (&self, line: &AsmLine) -> String {

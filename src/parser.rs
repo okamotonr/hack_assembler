@@ -1,8 +1,9 @@
 use std::fs::File;
+use std::convert::From;
 use std::io::{BufRead, BufReader};
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Comp {
     // Start at 0, b0xxxxxx
     Zero = 42,
@@ -36,8 +37,8 @@ pub enum Comp {
     DoM = 85,
 }
 
-impl Comp {
-    pub fn from_string(nimonick: &str) -> Self {
+impl From<&str> for Comp {
+    fn from(nimonick: &str) -> Self {
         match nimonick {
             "0" => Comp::Zero,
             "1" => Comp::One,
@@ -72,7 +73,7 @@ impl Comp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Dest {
     // Start from 0
     Null,
@@ -85,8 +86,8 @@ pub enum Dest {
     AMD
 }
 
-impl Dest {
-    pub fn from_string(nimonick: Option<&str>) -> Self {
+impl From<Option<&str>> for Dest {
+    fn from(nimonick: Option<&str>) -> Self {
         if nimonick.is_some() {
             let nimonick: &str = nimonick.unwrap();
             match nimonick {
@@ -105,7 +106,7 @@ impl Dest {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Jump {
     // Start from 0
     Null,
@@ -117,8 +118,9 @@ pub enum Jump {
     JLE,
     JMP
 }
-impl Jump {
-    pub fn from_string(nimonick: Option<&str>) -> Self {
+
+impl From<Option<&str>> for Jump {
+    fn from(nimonick: Option<&str>) -> Self {
         if nimonick.is_some() {
             let nimonick: &str = nimonick.unwrap();
             match nimonick {
@@ -138,92 +140,86 @@ impl Jump {
 }
 
 #[derive(Debug)]
-pub enum CommandType {
-    ACommand,
-    CCommand,
-    LCommand,
+pub enum AsmLine {
+    ACommand(String),
+    CCommand(Comp, Dest, Jump),
+    LCommand(String),
 }
 
-impl CommandType{
-    pub fn from_line(line: &str) -> Self {
+impl From<&str> for AsmLine{
+    fn from(line: &str) -> Self {
         if line.starts_with("(") {
-            return Self::LCommand
+            let symbol = line.replace("(", "").replace(")", "");
+            return AsmLine::LCommand(symbol)
         }
         if line.starts_with("@") {
-            return Self::ACommand
+            let symbol = line.replace("@", "");
+            return AsmLine::ACommand(symbol)
         }
-        Self::CCommand
-    }
-}
+        let comp = AsmLine::get_comp(line);
+        let dest = AsmLine::get_dest(line);
+        let jump = AsmLine::get_jump(line);
 
-#[derive(Debug)]
-pub struct AsmLine {
-    pub line: String,
-    pub command_t: CommandType,
+        AsmLine::CCommand(comp, dest, jump)
+    }
 }
 
 impl AsmLine {
-    pub fn new(line: &str) -> Self {
-        let command_t = CommandType::from_line(line);
-        let line = line.to_string();
-
-        Self { line, command_t }
-    }
-
     pub fn symbol(&self) -> Option<String> {
-        match self.command_t {
-            CommandType::CCommand => None,
-            CommandType::ACommand => Some(self.line.replace("@", "")),
-            CommandType::LCommand => Some(self.line.replace("(", "").replace(")", ""))
+        match self {
+            AsmLine::ACommand(ref symbol) | AsmLine::LCommand(ref symbol) => Some(symbol.clone()),
+            _ => None,
         }
     }
     pub fn comp(&self) -> Option<Comp> {
-        match self.command_t {
-            CommandType::CCommand => Some(self.get_comp()),
+        match self {
+            AsmLine::CCommand(comp, _, _) => Some(*comp),
             _ => None
         }
     }
 
     pub fn dest(&self) -> Option<Dest> {
-        match self.command_t {
-            CommandType::CCommand => Some(self.get_dest()),
+        match self {
+            AsmLine::CCommand(_, dest, _) => Some(*dest),
             _ => None
         }
     }
 
     pub fn jump(&self) -> Option<Jump> {
-        match self.command_t {
-            CommandType::CCommand => Some(self.get_jump()),
+        match self {
+            AsmLine::CCommand(_, _, jump) => Some(*jump),
             _ => None
         }
     }
 
 
-    fn get_comp(&self) -> Comp {
-        let v: Vec<&str> = self.line.split("=").collect();
+    fn get_comp(line: &str) -> Comp {
+        let v: Vec<&str> = line.split("=").collect();
         let comp = if v.len() == 2 { v[1] } else { v[0] };
         let v: Vec<&str> = comp.split(";").collect();
         let comp = v[0];
-        Comp::from_string(comp)
+        Comp::from(comp)
         }
 
-    fn get_dest(&self) -> Dest {
-        let v: Vec<&str> = self.line.split("=").collect();
+    fn get_dest(line: &str) -> Dest {
+        let v: Vec<&str> = line.split("=").collect();
         let len = v.len();
 
         match len {
-            1 => Dest::from_string(None),
-            _ => Dest::from_string(Some(v[0]))
+            1 => Dest::from(None),
+            2 => Dest::from(Some(v[0])),
+            _ => panic!("oooops"),
         }
     }
 
-    fn get_jump(&self) -> Jump {
-        let v: Vec<&str> = self.line.split(";").collect();
+    fn get_jump(line: &str) -> Jump {
+        let v: Vec<&str> = line.split(";").collect();
         let len = v.len();
 
         match len {
-            1 => Jump::from_string(None),
-            _ => Jump::from_string(Some(v[1]))
+            1 => Jump::from(None),
+            2 => Jump::from(Some(v[1])),
+            _ => panic!("oooops"),
         }
     }
 
@@ -248,7 +244,7 @@ impl Parser {
             if line.is_empty() {
                 continue
             }
-            let nimonick = AsmLine::new(line);
+            let nimonick = AsmLine::from(line);
             lines.push(nimonick)
         }
 
