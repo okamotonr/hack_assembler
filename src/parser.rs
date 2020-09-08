@@ -38,8 +38,8 @@ pub enum Comp {
 }
 
 impl From<&str> for Comp {
-    fn from(nimonick: &str) -> Self {
-        match nimonick {
+    fn from(mnenonic: &str) -> Self {
+        match mnenonic {
             "0" => Comp::Zero,
             "1" => Comp::One,
             "-1" => Comp::MinusOne,
@@ -86,11 +86,9 @@ pub enum Dest {
     AMD
 }
 
-impl From<Option<&str>> for Dest {
-    fn from(nimonick: Option<&str>) -> Self {
-        if nimonick.is_some() {
-            let nimonick: &str = nimonick.unwrap();
-            match nimonick {
+impl From<&str> for Dest {
+    fn from(mnenonic: &str) -> Self {
+        match mnenonic {
                 "M" => Dest::M,
                 "D" => Dest::D,
                 "MD" => Dest::MD,
@@ -98,11 +96,9 @@ impl From<Option<&str>> for Dest {
                 "AM" => Dest::AM,
                 "AD" => Dest::AD,
                 "AMD" => Dest::AMD,
+                "" => Dest::Null,
                 _ => panic!("OOPS"),
             }
-        } else {
-            Dest::Null
-        }
     }
 }
 
@@ -119,22 +115,18 @@ pub enum Jump {
     JMP
 }
 
-impl From<Option<&str>> for Jump {
-    fn from(nimonick: Option<&str>) -> Self {
-        if nimonick.is_some() {
-            let nimonick: &str = nimonick.unwrap();
-            match nimonick {
-                "JGT" => Jump::JGT,
-                "JEQ" => Jump::JEQ,
-                "JGE" => Jump::JGE,
-                "JLT" => Jump::JLT,
-                "JNE" => Jump::JNE,
-                "JLE" => Jump::JLE,
-                "JMP" => Jump::JMP,
-                _ => panic!("Ooops")
-            }
-        } else {
-            Jump::Null
+impl From<&str> for Jump {
+    fn from(mnenonic: &str) -> Self {
+        match mnenonic {
+            "JGT" => Jump::JGT,
+            "JEQ" => Jump::JEQ,
+            "JGE" => Jump::JGE,
+            "JLT" => Jump::JLT,
+            "JNE" => Jump::JNE,
+            "JLE" => Jump::JLE,
+            "JMP" => Jump::JMP,
+            "" => Jump::Null,
+            _ => panic!("Ooops")
         }
     }
 }
@@ -206,8 +198,8 @@ impl AsmLine {
         let len = v.len();
 
         match len {
-            1 => Dest::from(None),
-            2 => Dest::from(Some(v[0])),
+            1 => Dest::from(""),
+            2 => Dest::from(v[0]),
             _ => panic!("oooops"),
         }
     }
@@ -217,8 +209,8 @@ impl AsmLine {
         let len = v.len();
 
         match len {
-            1 => Jump::from(None),
-            2 => Jump::from(Some(v[1])),
+            1 => Jump::from(""),
+            2 => Jump::from(v[1]),
             _ => panic!("oooops"),
         }
     }
@@ -244,8 +236,8 @@ impl Parser {
             if line.is_empty() {
                 continue
             }
-            let nimonick = AsmLine::from(line);
-            lines.push(nimonick)
+            let mnenonic = AsmLine::from(line);
+            lines.push(mnenonic)
         }
 
         Ok(lines)
