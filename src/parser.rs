@@ -1,6 +1,8 @@
 use std::fs::File;
-use std::convert::From;
+use std::convert::TryFrom;
 use std::io::{BufRead, BufReader};
+
+use crate::error::{ParseError,ParseErrorKind};
 
 
 #[derive(Debug, Clone, Copy)]
@@ -37,38 +39,39 @@ pub enum Comp {
     DoM = 85,
 }
 
-impl From<&str> for Comp {
-    fn from(mnenonic: &str) -> Self {
+impl TryFrom<&str> for Comp {
+    type Error = ParseError;
+    fn try_from(mnenonic: &str) -> Result<Self, ParseError> {
         match mnenonic {
-            "0" => Comp::Zero,
-            "1" => Comp::One,
-            "-1" => Comp::MinusOne,
-            "D" => Comp::D,
-            "A" => Comp::A,
-            "!D" => Comp::NotD,
-            "!A" => Comp::NotA,
-            "-D" => Comp::MinusD,
-            "-A" => Comp::MinusA,
-            "D+1" => Comp::DpOne,
-            "A+1" => Comp::ApOne,
-            "D-1" => Comp::DmOne,
-            "A-1" => Comp::AmOne,
-            "D+A" => Comp::DpA,
-            "D-A" => Comp::DmA,
-            "A-D" => Comp::AmD,
-            "D&A" => Comp::DaA,
-            "D|A" => Comp::DoA,
-            "M" => Comp::M,
-            "!M" => Comp::NotM,
-            "-M" => Comp::MinusM,
-            "M+1" => Comp::MpOne,
-            "M-1" => Comp::MmOne,
-            "D+M" => Comp::DpM,
-            "D-M" => Comp::DmM,
-            "M-D" => Comp::MmD,
-            "D&M" => Comp::DaM,
-            "D|M" => Comp::DoM,
-            _ => panic!("Not match")
+            "0" => Ok(Comp::Zero),
+            "1" => Ok(Comp::One),
+            "-1" => Ok(Comp::MinusOne),
+            "D" => Ok(Comp::D),
+            "A" => Ok(Comp::A),
+            "!D" => Ok(Comp::NotD),
+            "!A" => Ok(Comp::NotA),
+            "-D" => Ok(Comp::MinusD),
+            "-A" => Ok(Comp::MinusA),
+            "D+1" => Ok(Comp::DpOne),
+            "A+1" => Ok(Comp::ApOne),
+            "D-1" => Ok(Comp::DmOne),
+            "A-1" => Ok(Comp::AmOne),
+            "D+A" => Ok(Comp::DpA),
+            "D-A" => Ok(Comp::DmA),
+            "A-D" => Ok(Comp::AmD),
+            "D&A" => Ok(Comp::DaA),
+            "D|A" => Ok(Comp::DoA),
+            "M" => Ok(Comp::M),
+            "!M" => Ok(Comp::NotM),
+            "-M" => Ok(Comp::MinusM),
+            "M+1" => Ok(Comp::MpOne),
+            "M-1" => Ok(Comp::MmOne),
+            "D+M" => Ok(Comp::DpM),
+            "D-M" => Ok(Comp::DmM),
+            "M-D" => Ok(Comp::MmD),
+            "D&M" => Ok(Comp::DaM),
+            "D|M" => Ok(Comp::DoM),
+            _ => Err(ParseError::new(ParseErrorKind::CompError(mnenonic.to_string())))
         }
     }
 }
@@ -86,18 +89,19 @@ pub enum Dest {
     AMD
 }
 
-impl From<&str> for Dest {
-    fn from(mnenonic: &str) -> Self {
+impl TryFrom<&str> for Dest {
+    type Error = ParseError;
+    fn try_from(mnenonic: &str) -> Result<Self, ParseError> {
         match mnenonic {
-                "M" => Dest::M,
-                "D" => Dest::D,
-                "MD" => Dest::MD,
-                "A" => Dest::A,
-                "AM" => Dest::AM,
-                "AD" => Dest::AD,
-                "AMD" => Dest::AMD,
-                "" => Dest::Null,
-                _ => panic!("OOPS"),
+                "M" => Ok(Dest::M),
+                "D" => Ok(Dest::D),
+                "MD" => Ok(Dest::MD),
+                "A" => Ok(Dest::A),
+                "AM" => Ok(Dest::AM),
+                "AD" => Ok(Dest::AD),
+                "AMD" => Ok(Dest::AMD),
+                "" => Ok(Dest::Null),
+                _ => Err(ParseError::new(ParseErrorKind::CompError(mnenonic.to_string())))
             }
     }
 }
@@ -115,20 +119,35 @@ pub enum Jump {
     JMP
 }
 
-impl From<&str> for Jump {
-    fn from(mnenonic: &str) -> Self {
+impl TryFrom<&str> for Jump {
+    type Error = ParseError;
+    fn try_from(mnenonic: &str) -> Result<Self, ParseError> {
         match mnenonic {
-            "JGT" => Jump::JGT,
-            "JEQ" => Jump::JEQ,
-            "JGE" => Jump::JGE,
-            "JLT" => Jump::JLT,
-            "JNE" => Jump::JNE,
-            "JLE" => Jump::JLE,
-            "JMP" => Jump::JMP,
-            "" => Jump::Null,
-            _ => panic!("Ooops")
+            "JGT" => Ok(Jump::JGT),
+            "JEQ" => Ok(Jump::JEQ),
+            "JGE" => Ok(Jump::JGE),
+            "JLT" => Ok(Jump::JLT),
+            "JNE" => Ok(Jump::JNE),
+            "JLE" => Ok(Jump::JLE),
+            "JMP" => Ok(Jump::JMP),
+            "" => Ok(Jump::Null),
+            _ => Err(ParseError::new(ParseErrorKind::JumpError(mnenonic.to_string())))
         }
     }
+}
+
+fn validate_syboml(symbol: &str) -> Result<(), ParseError> {
+    let ch_1 = symbol.chars().nth(0).unwrap();
+    if ch_1.is_numeric(){
+        if symbol.chars().all(char::is_numeric) {
+            return Ok(())
+        } else {
+            return Err(ParseError::new(ParseErrorKind::CompError(symbol.to_string())))
+        }
+    } else {
+        return Ok(())
+    }
+
 }
 
 #[derive(Debug)]
@@ -138,21 +157,32 @@ pub enum AsmLine {
     LCommand(String),
 }
 
-impl From<&str> for AsmLine{
-    fn from(line: &str) -> Self {
+impl TryFrom<&str> for AsmLine{
+    type Error = ParseError;
+    fn try_from(line: &str) -> Result<Self, ParseError> {
         if line.starts_with("(") {
             let symbol = line.replace("(", "").replace(")", "");
-            return AsmLine::LCommand(symbol)
+
+            match validate_syboml(&symbol) {
+                Ok(_) => return Ok(AsmLine::LCommand(symbol)),
+                Err(e) => return Err(e)
+            }
         }
+
         if line.starts_with("@") {
             let symbol = line.replace("@", "");
-            return AsmLine::ACommand(symbol)
-        }
-        let comp = AsmLine::get_comp(line);
-        let dest = AsmLine::get_dest(line);
-        let jump = AsmLine::get_jump(line);
 
-        AsmLine::CCommand(comp, dest, jump)
+            match validate_syboml(&symbol) {
+                Ok(_) => return Ok(AsmLine::ACommand(symbol)),
+                Err(e) => return Err(e)
+            }
+        }
+
+        let comp = AsmLine::get_comp(line)?;
+        let dest = AsmLine::get_dest(line)?;
+        let jump = AsmLine::get_jump(line)?;
+
+        Ok(AsmLine::CCommand(comp, dest, jump))
     }
 }
 
@@ -185,32 +215,32 @@ impl AsmLine {
     }
 
 
-    fn get_comp(line: &str) -> Comp {
+    fn get_comp(line: &str) -> Result<Comp, ParseError> {
         let v: Vec<&str> = line.split("=").collect();
         let comp = if v.len() == 2 { v[1] } else { v[0] };
         let v: Vec<&str> = comp.split(";").collect();
         let comp = v[0];
-        Comp::from(comp)
+        Comp::try_from(comp)
         }
 
-    fn get_dest(line: &str) -> Dest {
+    fn get_dest(line: &str) -> Result<Dest, ParseError> {
         let v: Vec<&str> = line.split("=").collect();
         let len = v.len();
 
         match len {
-            1 => Dest::from(""),
-            2 => Dest::from(v[0]),
+            1 => Dest::try_from(""),
+            2 => Dest::try_from(v[0]),
             _ => panic!("oooops"),
         }
     }
 
-    fn get_jump(line: &str) -> Jump {
+    fn get_jump(line: &str) -> Result<Jump, ParseError> {
         let v: Vec<&str> = line.split(";").collect();
         let len = v.len();
 
         match len {
-            1 => Jump::from(""),
-            2 => Jump::from(v[1]),
+            1 => Jump::try_from(""),
+            2 => Jump::try_from(v[1]),
             _ => panic!("oooops"),
         }
     }
@@ -224,10 +254,11 @@ impl Parser {
     pub fn new() -> Self {
         Self {}
     }
-    pub fn parse(path: &str) -> Result<Vec<AsmLine>, Box<std::error::Error>> {
+    pub fn parse(path: &str) -> Result<Vec<AsmLine>, std::io::Error> {
+        let mut shoud_panic = false;
         let mut lines: Vec<AsmLine> = Vec::new();
         let file = File::open(path)?;
-        for result in BufReader::new(file).lines() {
+        for (index, result) in BufReader::new(file).lines().enumerate() {
             // parse white space
             let raw_line = result?.replace(" ", "");
             // parse comment
@@ -236,8 +267,16 @@ impl Parser {
             if line.is_empty() {
                 continue
             }
-            let mnenonic = AsmLine::from(line);
-            lines.push(mnenonic)
+            let mnenonic = AsmLine::try_from(line);
+            if let Err(e) = mnenonic {
+                eprintln!("{}: {}", index, e);
+                shoud_panic = true;
+                continue
+            }
+            lines.push(mnenonic.unwrap())
+        }
+        if shoud_panic {
+            panic!("Syntax Error...")
         }
 
         Ok(lines)
