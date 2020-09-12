@@ -2,7 +2,7 @@ use std::fs::File;
 use std::convert::TryFrom;
 use std::io::{BufRead, BufReader};
 
-use crate::error::{LineError};
+use crate::error::{LineError, Error, ParseError};
 
 
 #[derive(Debug, Clone, Copy)]
@@ -182,9 +182,10 @@ impl Parser {
         Self {}
     }
 
-    pub fn parse(&self, path: &str) -> Result<Vec<AsmLine>, std::io::Error> {
-        let mut shoud_panic = false;
+    pub fn parse(&self, path: &str) -> Result<Vec<AsmLine>, Error> {
+        let mut parse_error = ParseError::new();
         let mut lines: Vec<AsmLine> = Vec::new();
+
         let file = File::open(path)?;
         for (index, result) in BufReader::new(file).lines().enumerate() {
             // parse white space
@@ -195,19 +196,19 @@ impl Parser {
             if line.is_empty() {
                 continue
             }
-            let mnenonic = self.parse_line(line);
-            if let Err(e) = mnenonic {
-                eprintln!("{}: {}", index, e);
-                shoud_panic = true;
+            let asm_line = self.parse_line(line);
+            if let Err(e) = asm_line {
+                parse_error.add(e, index);
                 continue
             }
-            lines.push(mnenonic.unwrap())
-        }
-        if shoud_panic {
-            panic!("Syntax Error...")
+            lines.push(asm_line.unwrap())
         }
 
-        Ok(lines)
+        if parse_error.is_empty() {
+            Ok(lines)
+        } else {
+            Err(Error::ParseError(parse_error))
+        }
 
     }
     fn parse_line(&self, line: &str) -> Result<AsmLine, LineError> {
@@ -227,7 +228,7 @@ impl Parser {
             return Err(LineError::InvalidSymbolError(symbol))
         }
 
-        if self.validate_syboml(&symbol) {
+        if self.is_valide_syboml(&symbol) {
             return Ok(AsmLine::ACommand(symbol))
         } else {
             return Err(LineError::InvalidSymbolError(symbol))
@@ -241,7 +242,7 @@ impl Parser {
             return Err(LineError::InvalidSymbolError(symbol))
         }
 
-        if self.validate_syboml(&symbol) {
+        if self.is_valide_syboml(&symbol) {
             return Ok(AsmLine::LCommand(symbol))
         } else {
             return Err(LineError::InvalidSymbolError(symbol))
@@ -257,7 +258,7 @@ impl Parser {
         Ok(AsmLine::CCommand(comp, dest, jump))
     }
 
-    fn validate_syboml(&self, symbol: &str) -> bool {
+    fn is_valide_syboml(&self, symbol: &str) -> bool {
         let ch_1 = symbol.chars().nth(0).unwrap();
         let allowed_sign = ['_', '.', '$', ':'];
 
