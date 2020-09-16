@@ -5,7 +5,7 @@ use std::io::{BufRead, BufReader};
 use crate::error::{LineError, Error, ParseError};
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Comp {
     // Start at 0, b0xxxxxx
     Zero = 42,
@@ -76,7 +76,7 @@ impl TryFrom<&str> for Comp {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Dest {
     // Start from 0
     Null,
@@ -106,7 +106,7 @@ impl TryFrom<&str> for Dest {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Jump {
     // Start from 0
     Null,
@@ -138,7 +138,7 @@ impl TryFrom<&str> for Jump {
 
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AsmLine {
     ACommand(String),
     CCommand(Comp, Dest, Jump),
@@ -314,3 +314,68 @@ impl Parser {
 }
 
 
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_parse_c() {
+        let p = Parser::new();
+
+        let raw_line = "0;JMP";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::CCommand(
+            Comp::try_from("0").unwrap(), 
+            Dest::try_from("").unwrap(), 
+            Jump::try_from("JMP").unwrap());
+        assert_eq!(ret, expected);
+
+        let raw_line = "D=M";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::CCommand(
+            Comp::try_from("M").unwrap(),
+            Dest::try_from("D").unwrap(),
+            Jump::try_from("").unwrap()
+        );
+        assert_eq!(ret, expected);
+
+        let raw_line = "D|M";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::CCommand(
+            Comp::try_from("D|M").unwrap(),
+            Dest::try_from("").unwrap(),
+            Jump::try_from("").unwrap(),
+        );
+        assert_eq!(ret, expected)
+    }
+
+    #[test]
+    fn test_parse_a(){
+        let p = Parser::new();
+
+        let raw_line = "@R1";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::ACommand("R1".to_string());
+        assert_eq!(ret, expected);
+
+        let raw_line = "@100";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::ACommand("100".to_string());
+        assert_eq!(ret, expected);
+
+    }
+
+    #[test]
+    fn test_parse_l() {
+        let p = Parser::new();
+        let raw_line = "(SYMBOL)";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::LCommand("SYMBOL".to_string());
+        assert_eq!(ret, expected);
+
+        let raw_line = "(115)";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::LCommand("115".to_string());
+        assert_eq!(ret, expected)
+    }
+}
