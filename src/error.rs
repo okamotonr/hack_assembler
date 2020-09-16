@@ -29,7 +29,7 @@ impl fmt::Display for LineError {
 
 impl std::error::Error for LineError {}
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ParseError {
     message: String,
 }

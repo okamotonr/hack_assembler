@@ -171,6 +171,7 @@ impl AsmLine {
     }
 }
 
+#[derive(Default)]
 pub struct Parser {}
 
 impl Parser {
@@ -207,9 +208,9 @@ impl Parser {
         }
     }
     fn parse_line(&self, line: &str) -> Result<AsmLine, LineError> {
-        if line.starts_with("@") {
+        if line.starts_with('@') {
             self.parse_a_command(line)
-        } else if line.starts_with("(") {
+        } else if line.starts_with('(') {
             self.parse_l_command(line)
         } else {
             self.parse_c_command(line)
@@ -253,15 +254,11 @@ impl Parser {
     }
 
     fn is_valide_syboml(&self, symbol: &str) -> bool {
-        let ch_1 = symbol.chars().nth(0).unwrap();
+        let ch_1 = symbol.chars().next().unwrap();
         let allowed_sign = ['_', '.', '$', ':'];
 
         if ch_1.is_numeric() {
-            if symbol.chars().all(char::is_numeric) {
-                true
-            } else {
-                false
-            }
+            symbol.chars().all(char::is_numeric)
         } else {
             for ch in symbol.chars() {
                 if let false = ch.is_ascii_alphanumeric() {
@@ -275,15 +272,15 @@ impl Parser {
     }
 
     fn get_comp(&self, line: &str) -> Result<Comp, LineError> {
-        let v: Vec<&str> = line.split("=").collect();
+        let v: Vec<&str> = line.split('=').collect();
         let comp = if v.len() == 2 { v[1] } else { v[0] };
-        let v: Vec<&str> = comp.split(";").collect();
+        let v: Vec<&str> = comp.split(';').collect();
         let comp = v[0];
         Comp::try_from(comp)
     }
 
     fn get_dest(&self, line: &str) -> Result<Dest, LineError> {
-        let v: Vec<&str> = line.split("=").collect();
+        let v: Vec<&str> = line.split('=').collect();
         let len = v.len();
 
         match len {
@@ -294,7 +291,7 @@ impl Parser {
     }
 
     fn get_jump(&self, line: &str) -> Result<Jump, LineError> {
-        let v: Vec<&str> = line.split(";").collect();
+        let v: Vec<&str> = line.split(';').collect();
         let len = v.len();
 
         match len {

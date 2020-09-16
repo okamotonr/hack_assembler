@@ -62,10 +62,9 @@ impl SymbolTable {
             return Some(ret);
         }
         let ret = self.table.get(&name);
-        if ret.is_some() {
-            Some(*ret.unwrap())
-        } else {
-            None
+        match ret {
+            Some(_) => Some(*ret.unwrap()),
+            None => None,
         }
     }
 
