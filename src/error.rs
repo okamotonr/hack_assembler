@@ -1,12 +1,11 @@
 use std::fmt;
 
-
 #[derive(Debug)]
 pub enum LineError {
     CompError(String),
     DestError(String),
     JumpError(String),
-    InvalidSymbolError(String)
+    InvalidSymbolError(String),
 }
 
 impl fmt::Display for LineError {
@@ -14,13 +13,13 @@ impl fmt::Display for LineError {
         match self {
             LineError::CompError(ref sentence) => {
                 write!(f, "Invalid Comp expression: {}", sentence)
-            },
+            }
             LineError::DestError(ref sentence) => {
                 write!(f, "Invalid Dest expression: {}", sentence)
-            },
+            }
             LineError::JumpError(ref sentence) => {
                 write!(f, "Invalid Jump expression: {}", sentence)
-            },
+            }
             LineError::InvalidSymbolError(ref symbol) => {
                 write!(f, "Invalid symbolname: {}", symbol)
             }
@@ -30,10 +29,9 @@ impl fmt::Display for LineError {
 
 impl std::error::Error for LineError {}
 
-
 #[derive(Debug)]
 pub struct ParseError {
-    message: String
+    message: String,
 }
 
 impl fmt::Display for ParseError {
@@ -46,7 +44,9 @@ impl std::error::Error for ParseError {}
 
 impl ParseError {
     pub fn new() -> Self {
-        Self { message: String::from("") }
+        Self {
+            message: String::from(""),
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -58,7 +58,6 @@ impl ParseError {
         self.message = format!("{}{}", self.message, msg);
     }
 }
-
 
 #[derive(Debug)]
 pub enum Error {
