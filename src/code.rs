@@ -43,15 +43,15 @@ impl SymbolTable {
         }
     }
 
-    pub fn insert(&mut self, name: String) {
+    pub fn insert(&mut self, name: &str) {
         if self.index == self.limit {
             panic!("You cannot insert symbol anymore");
         }
         if name.chars().all(char::is_numeric) {
             return;
         }
-        if self.table.get(&name).is_none() {
-            self.table.insert(name, self.index);
+        if self.table.get(name).is_none() {
+            self.table.insert(name.to_string(), self.index);
             self.index += 1;
         }
     }
@@ -61,22 +61,20 @@ impl SymbolTable {
             let ret: u32 = name.parse().unwrap();
             return Some(ret);
         }
-        let ret = self.table.get(&name);
-        match ret {
-            Some(_) => Some(*ret.unwrap()),
-            None => None,
-        }
+        self.table.get(&name).copied()
     }
 
     pub fn set_rom(&mut self, line: &AsmLine) {
         match line {
-            AsmLine::LCommand(_) => self.insert_rom(line.symbol().unwrap()),
+            AsmLine::LCommand(_) => self.insert_rom(&line.symbol().unwrap()),
             _ => self.rom_address += 1,
         }
     }
 
-    fn insert_rom(&mut self, name: String) {
-        self.table.insert(name, self.rom_address);
+    fn insert_rom(&mut self, name: &str) {
+        if self.table.get(name).is_none() {
+            self.table.insert(name.to_string(), self.rom_address);
+        }
     }
 }
 
@@ -95,7 +93,7 @@ impl CodeGenerator {
         }
         for line in lines.iter() {
             if line.symbol().is_some() {
-                table.insert(line.symbol().unwrap());
+                table.insert(&line.symbol().unwrap());
             }
         }
         CodeGenerator { table, lines }

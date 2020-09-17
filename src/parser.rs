@@ -3,7 +3,7 @@ use std::io::BufRead;
 
 use crate::error::{Error, LineError, ParseError};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Comp {
     // Start at 0, b0xxxxxx
     Zero = 42,
@@ -74,7 +74,7 @@ impl TryFrom<&str> for Comp {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Dest {
     // Start from 0
     Null,
@@ -104,7 +104,7 @@ impl TryFrom<&str> for Dest {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Jump {
     // Start from 0
     Null,
@@ -134,7 +134,7 @@ impl TryFrom<&str> for Jump {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AsmLine {
     ACommand(String),
     CCommand(Comp, Dest, Jump),
@@ -216,30 +216,27 @@ impl Parser {
     }
 
     fn parse_a_command(&self, line: &str) -> Result<AsmLine, LineError> {
-        let allowed_len = line.chars().count() - 1;
-        let symbol = line.replace("@", "");
-        if allowed_len != symbol.chars().count() {
-            return Err(LineError::InvalidSymbolError(symbol));
-        }
+        let symbol = &line[1..];
 
-        if self.is_valide_syboml(&symbol) {
-            Ok(AsmLine::ACommand(symbol))
+        if self.is_valide_syboml(symbol) {
+            Ok(AsmLine::ACommand(symbol.to_string()))
         } else {
-            Err(LineError::InvalidSymbolError(symbol))
+            Err(LineError::InvalidSymbolError(symbol.to_string()))
         }
     }
 
     fn parse_l_command(&self, line: &str) -> Result<AsmLine, LineError> {
-        let allowed_len = line.chars().count() - 2;
-        let symbol = line.replace("(", "").replace(")", "");
-        if allowed_len != symbol.chars().count() {
-            return Err(LineError::InvalidSymbolError(symbol));
+        let symbol = &line[1..];
+        if !symbol.ends_with(')') {
+            return Err(LineError::InvalidSymbolError(line.to_string()));
         }
+        let end_point = symbol.len() - 1;
+        let symbol = &symbol[..end_point];
 
-        if self.is_valide_syboml(&symbol) {
-            Ok(AsmLine::LCommand(symbol))
+        if self.is_valide_syboml(symbol) {
+            Ok(AsmLine::LCommand(symbol.to_string()))
         } else {
-            Err(LineError::InvalidSymbolError(symbol))
+            Err(LineError::InvalidSymbolError(symbol.to_string()))
         }
     }
 
@@ -351,5 +348,21 @@ mod test {
         let ret = p.parse_line(raw_line).unwrap();
         let expected = AsmLine::LCommand("115".to_string());
         assert_eq!(ret, expected)
+    }
+
+    #[test]
+    #[should_panic(expected = "@100")]
+    fn test_fail_at_a() {
+        let raw_line = "@@100";
+        let p = Parser::new();
+        p.parse_line(raw_line).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "(100)")]
+    fn test_fail_at_l() {
+        let raw_line = "((100))";
+        let p = Parser::new();
+        p.parse_line(raw_line).unwrap();
     }
 }
