@@ -310,29 +310,17 @@ mod test {
 
         let raw_line = "0;JMP";
         let ret = p.parse_line(raw_line).unwrap();
-        let expected = AsmLine::CCommand(
-            Comp::try_from("0").unwrap(),
-            Dest::try_from("").unwrap(),
-            Jump::try_from("JMP").unwrap(),
-        );
+        let expected = AsmLine::CCommand(Comp::Zero, Dest::Null, Jump::JMP);
         assert_eq!(ret, expected);
 
         let raw_line = "D=M";
         let ret = p.parse_line(raw_line).unwrap();
-        let expected = AsmLine::CCommand(
-            Comp::try_from("M").unwrap(),
-            Dest::try_from("D").unwrap(),
-            Jump::try_from("").unwrap(),
-        );
+        let expected = AsmLine::CCommand(Comp::M, Dest::D, Jump::Null);
         assert_eq!(ret, expected);
 
         let raw_line = "D|M";
         let ret = p.parse_line(raw_line).unwrap();
-        let expected = AsmLine::CCommand(
-            Comp::try_from("D|M").unwrap(),
-            Dest::try_from("").unwrap(),
-            Jump::try_from("").unwrap(),
-        );
+        let expected = AsmLine::CCommand(Comp::DoM, Dest::Null, Jump::Null);
         assert_eq!(ret, expected)
     }
 
