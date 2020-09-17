@@ -1,6 +1,5 @@
 use std::convert::TryFrom;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
 
 use crate::error::{Error, LineError, ParseError};
 
@@ -179,12 +178,11 @@ impl Parser {
         Self {}
     }
 
-    pub fn parse(&self, path: &str) -> Result<Vec<AsmLine>, Error> {
+    pub fn parse<R: BufRead>(&self, reader: R) -> Result<Vec<AsmLine>, Error> {
         let mut parse_error = ParseError::new();
         let mut lines: Vec<AsmLine> = Vec::new();
 
-        let file = File::open(path)?;
-        for (index, result) in BufReader::new(file).lines().enumerate() {
+        for (index, result) in reader.lines().enumerate() {
             // parse white space
             let raw_line = result?.replace(" ", "");
             // parse comment
