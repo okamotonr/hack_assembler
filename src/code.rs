@@ -99,15 +99,19 @@ impl CodeGenerator {
         CodeGenerator { table, lines }
     }
 
-    pub fn gen(&self) {
+    pub fn gen(&self) -> Vec<String> {
         let mut ret: Vec<String> = Vec::new();
         for line in self.lines.iter() {
             let code = self.translate(line);
+            if code.is_empty() {
+                continue;
+            }
             ret.push(code);
         }
-        for line in ret {
-            print!("{}", line)
+        for line in ret.iter() {
+            println!("{}", line)
         }
+        ret
     }
     fn translate(&self, line: &AsmLine) -> String {
         match line {
@@ -120,13 +124,13 @@ impl CodeGenerator {
         let mut base_str = "111".to_string();
         let comp = &format!("{:07b}", line.comp().unwrap() as u32);
         let dest = &format!("{:03b}", line.dest().unwrap() as u32);
-        let jump = &format!("{:03b}\n", line.jump().unwrap() as u32);
+        let jump = &format!("{:03b}", line.jump().unwrap() as u32);
         base_str = base_str + comp + dest + jump;
         base_str
     }
     fn translate_a_command(&self, line: &AsmLine) -> String {
         let address = self.table.get(line.symbol().unwrap());
-        let b_str: String = format!("{:016b}\n", address.unwrap());
+        let b_str: String = format!("{:016b}", address.unwrap());
         b_str
     }
     fn translate_l_command(&self) -> String {
