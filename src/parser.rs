@@ -1,11 +1,9 @@
-use std::fs::File;
 use std::convert::TryFrom;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
 
-use crate::error::{LineError, Error, ParseError};
+use crate::error::{Error, LineError, ParseError};
 
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Comp {
     // Start at 0, b0xxxxxx
     Zero = 42,
@@ -71,12 +69,12 @@ impl TryFrom<&str> for Comp {
             "M-D" => Ok(Comp::MmD),
             "D&M" => Ok(Comp::DaM),
             "D|M" => Ok(Comp::DoM),
-            _ => Err(LineError::CompError(mnenonic.to_string()))
+            _ => Err(LineError::CompError(mnenonic.to_string())),
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Dest {
     // Start from 0
     Null,
@@ -86,27 +84,27 @@ pub enum Dest {
     A,
     AM,
     AD,
-    AMD
+    AMD,
 }
 
 impl TryFrom<&str> for Dest {
     type Error = LineError;
     fn try_from(mnenonic: &str) -> Result<Self, LineError> {
         match mnenonic {
-                "M" => Ok(Dest::M),
-                "D" => Ok(Dest::D),
-                "MD" => Ok(Dest::MD),
-                "A" => Ok(Dest::A),
-                "AM" => Ok(Dest::AM),
-                "AD" => Ok(Dest::AD),
-                "AMD" => Ok(Dest::AMD),
-                "" => Ok(Dest::Null),
-                _ => Err(LineError::CompError(mnenonic.to_string()))
-            }
+            "M" => Ok(Dest::M),
+            "D" => Ok(Dest::D),
+            "MD" => Ok(Dest::MD),
+            "A" => Ok(Dest::A),
+            "AM" => Ok(Dest::AM),
+            "AD" => Ok(Dest::AD),
+            "AMD" => Ok(Dest::AMD),
+            "" => Ok(Dest::Null),
+            _ => Err(LineError::CompError(mnenonic.to_string())),
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Jump {
     // Start from 0
     Null,
@@ -116,7 +114,7 @@ pub enum Jump {
     JLT,
     JNE,
     JLE,
-    JMP
+    JMP,
 }
 
 impl TryFrom<&str> for Jump {
@@ -131,14 +129,12 @@ impl TryFrom<&str> for Jump {
             "JLE" => Ok(Jump::JLE),
             "JMP" => Ok(Jump::JMP),
             "" => Ok(Jump::Null),
-            _ => Err(LineError::JumpError(mnenonic.to_string()))
+            _ => Err(LineError::JumpError(mnenonic.to_string())),
         }
     }
 }
 
-
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AsmLine {
     ACommand(String),
     CCommand(Comp, Dest, Jump),
@@ -155,51 +151,50 @@ impl AsmLine {
     pub fn comp(&self) -> Option<Comp> {
         match self {
             AsmLine::CCommand(comp, _, _) => Some(*comp),
-            _ => None
+            _ => None,
         }
     }
 
     pub fn dest(&self) -> Option<Dest> {
         match self {
             AsmLine::CCommand(_, dest, _) => Some(*dest),
-            _ => None
+            _ => None,
         }
     }
 
     pub fn jump(&self) -> Option<Jump> {
         match self {
             AsmLine::CCommand(_, _, jump) => Some(*jump),
-            _ => None
+            _ => None,
         }
     }
 }
 
-pub struct Parser {
-}
+#[derive(Default)]
+pub struct Parser {}
 
 impl Parser {
     pub fn new() -> Self {
         Self {}
     }
 
-    pub fn parse(&self, path: &str) -> Result<Vec<AsmLine>, Error> {
+    pub fn parse<R: BufRead>(&self, reader: R) -> Result<Vec<AsmLine>, Error> {
         let mut parse_error = ParseError::new();
         let mut lines: Vec<AsmLine> = Vec::new();
 
-        let file = File::open(path)?;
-        for (index, result) in BufReader::new(file).lines().enumerate() {
+        for (index, result) in reader.lines().enumerate() {
             // parse white space
             let raw_line = result?.replace(" ", "");
             // parse comment
             let v: Vec<&str> = raw_line.split("//").collect();
             let line = v[0];
             if line.is_empty() {
-                continue
+                continue;
             }
             let asm_line = self.parse_line(line);
             if let Err(e) = asm_line {
                 parse_error.add(e, index);
-                continue
+                continue;
             }
             lines.push(asm_line.unwrap())
         }
@@ -209,45 +204,40 @@ impl Parser {
         } else {
             Err(Error::ParseError(parse_error))
         }
-
     }
     fn parse_line(&self, line: &str) -> Result<AsmLine, LineError> {
-        if line.starts_with("@") {
+        if line.starts_with('@') {
             self.parse_a_command(line)
-        } else if line.starts_with("(") {
+        } else if line.starts_with('(') {
             self.parse_l_command(line)
         } else {
             self.parse_c_command(line)
         }
-    } 
+    }
 
     fn parse_a_command(&self, line: &str) -> Result<AsmLine, LineError> {
-        let allowed_len = line.chars().count() - 1;
-        let symbol = line.replace("@", "");
-        if allowed_len != symbol.chars().count() {
-            return Err(LineError::InvalidSymbolError(symbol))
-        }
+        let symbol = &line[1..];
 
-        if self.is_valide_syboml(&symbol) {
-            return Ok(AsmLine::ACommand(symbol))
+        if self.is_valide_syboml(symbol) {
+            Ok(AsmLine::ACommand(symbol.to_string()))
         } else {
-            return Err(LineError::InvalidSymbolError(symbol))
+            Err(LineError::InvalidSymbolError(symbol.to_string()))
         }
     }
 
     fn parse_l_command(&self, line: &str) -> Result<AsmLine, LineError> {
-        let allowed_len = line.chars().count() - 2;
-        let symbol = line.replace("(", "").replace(")", "");
-        if allowed_len != symbol.chars().count() {
-            return Err(LineError::InvalidSymbolError(symbol))
+        let symbol = &line[1..];
+        if !symbol.ends_with(')') {
+            return Err(LineError::InvalidSymbolError(line.to_string()));
         }
+        let end_point = symbol.len() - 1;
+        let symbol = &symbol[..end_point];
 
-        if self.is_valide_syboml(&symbol) {
-            return Ok(AsmLine::LCommand(symbol))
+        if self.is_valide_syboml(symbol) {
+            Ok(AsmLine::LCommand(symbol.to_string()))
         } else {
-            return Err(LineError::InvalidSymbolError(symbol))
+            Err(LineError::InvalidSymbolError(symbol.to_string()))
         }
-
     }
 
     fn parse_c_command(&self, line: &str) -> Result<AsmLine, LineError> {
@@ -259,39 +249,33 @@ impl Parser {
     }
 
     fn is_valide_syboml(&self, symbol: &str) -> bool {
-        let ch_1 = symbol.chars().nth(0).unwrap();
+        let ch_1 = symbol.chars().next().unwrap();
         let allowed_sign = ['_', '.', '$', ':'];
 
-        if ch_1.is_numeric(){
-            if symbol.chars().all(char::is_numeric) {
-                return true
-            } else {
-                return false
-            }
-
+        if ch_1.is_numeric() {
+            symbol.chars().all(char::is_numeric)
         } else {
             for ch in symbol.chars() {
                 if let false = ch.is_ascii_alphanumeric() {
                     if let false = allowed_sign.contains(&ch) {
-                        return false
+                        return false;
                     }
                 }
             }
-            return true
+            true
         }
     }
 
     fn get_comp(&self, line: &str) -> Result<Comp, LineError> {
-        let v: Vec<&str> = line.split("=").collect();
+        let v: Vec<&str> = line.split('=').collect();
         let comp = if v.len() == 2 { v[1] } else { v[0] };
-        let v: Vec<&str> = comp.split(";").collect();
+        let v: Vec<&str> = comp.split(';').collect();
         let comp = v[0];
         Comp::try_from(comp)
     }
 
-
     fn get_dest(&self, line: &str) -> Result<Dest, LineError> {
-        let v: Vec<&str> = line.split("=").collect();
+        let v: Vec<&str> = line.split('=').collect();
         let len = v.len();
 
         match len {
@@ -302,7 +286,7 @@ impl Parser {
     }
 
     fn get_jump(&self, line: &str) -> Result<Jump, LineError> {
-        let v: Vec<&str> = line.split(";").collect();
+        let v: Vec<&str> = line.split(';').collect();
         let len = v.len();
 
         match len {
@@ -313,4 +297,72 @@ impl Parser {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
 
+    #[test]
+    fn test_parse_c() {
+        let p = Parser::new();
+
+        let raw_line = "0;JMP";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::CCommand(Comp::Zero, Dest::Null, Jump::JMP);
+        assert_eq!(ret, expected);
+
+        let raw_line = "D=M";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::CCommand(Comp::M, Dest::D, Jump::Null);
+        assert_eq!(ret, expected);
+
+        let raw_line = "D|M";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::CCommand(Comp::DoM, Dest::Null, Jump::Null);
+        assert_eq!(ret, expected)
+    }
+
+    #[test]
+    fn test_parse_a() {
+        let p = Parser::new();
+
+        let raw_line = "@R1";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::ACommand("R1".to_string());
+        assert_eq!(ret, expected);
+
+        let raw_line = "@100";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::ACommand("100".to_string());
+        assert_eq!(ret, expected);
+    }
+
+    #[test]
+    fn test_parse_l() {
+        let p = Parser::new();
+        let raw_line = "(SYMBOL)";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::LCommand("SYMBOL".to_string());
+        assert_eq!(ret, expected);
+
+        let raw_line = "(115)";
+        let ret = p.parse_line(raw_line).unwrap();
+        let expected = AsmLine::LCommand("115".to_string());
+        assert_eq!(ret, expected)
+    }
+
+    #[test]
+    #[should_panic(expected = "@100")]
+    fn test_fail_at_a() {
+        let raw_line = "@@100";
+        let p = Parser::new();
+        p.parse_line(raw_line).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "(100)")]
+    fn test_fail_at_l() {
+        let raw_line = "((100))";
+        let p = Parser::new();
+        p.parse_line(raw_line).unwrap();
+    }
+}
